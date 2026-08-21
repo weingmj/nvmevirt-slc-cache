@@ -401,6 +401,7 @@ static void advance_write_pointer(struct conv_ftl *conv_ftl, uint32_t io_type)
 		conv_ftl->dyn_slc_mode = TLC_MODE;
 	}
 	wpp->curline = get_next_free_line(conv_ftl);
+	NVMEV_ASSERT(wpp->curline);
 	NVMEV_DEBUG_VERBOSE("wpp: got new clean line %d\n", wpp->curline->id);
 
 	wpp->blk = wpp->curline->id;
@@ -1001,7 +1002,12 @@ static struct line *select_victim_line_slc(struct conv_ftl *conv_ftl, bool force
 	victim_line = pqueue_peek(slm->victim_line_pq);
 #endif
 	if (!victim_line) {
-		return NULL;
+		victim_line = list_first_entry_or_null(&slm->full_line_list, struct line, entry);
+		if (!victim_line)
+			return NULL;
+		list_del_init(&victim_line->entry);
+		slm->full_line_cnt--;
+		return victim_line;
 	}
 #if defined(RD2)
 #else
@@ -1062,7 +1068,6 @@ static void clean_one_flashpg(struct conv_ftl *conv_ftl, struct ppa *ppa)
 	int io_type = GC_IO;
 	if (conv_ftl->slc_mode == SLC_MODE && conv_ftl->dyn_slc_mode == SLC_MODE) {
 		NVMEV_ASSERT(ppa->g.blk < spp->tt_lines_slc);
-		cur_pgs_per_flashpg = spp->pgs_per_blk_slc;
 		io_type = USER_IO;
 	}
 	
@@ -1112,7 +1117,7 @@ static void mark_line_free(struct conv_ftl *conv_ftl, struct ppa *ppa)
 	struct line_mgmt *lm;
 	struct line *line = get_line(conv_ftl, ppa);
 
-	if (conv_ftl->slc_mode) {
+	if (conv_ftl->slc_mode == SLC_MODE) {
 		if (ppa->g.blk < conv_ftl->ssd->sp.tt_lines_slc) {
 			lm = &conv_ftl->slm;
 		} else {
@@ -1159,7 +1164,10 @@ static int do_gc(struct conv_ftl *conv_ftl, bool force)
 		    victim_line->ipc, victim_line->vpc, conv_ftl->lm.victim_line_cnt,
 		    conv_ftl->lm.full_line_cnt, conv_ftl->lm.free_line_cnt);
 
-	conv_ftl->wfc.credits_to_refill = victim_line->ipc;
+	if (conv_ftl->dyn_slc_mode == SLC_MODE)
+		conv_ftl->wfc.credits_to_refill = spp->pgs_per_line_slc;
+	else
+		conv_ftl->wfc.credits_to_refill = victim_line->ipc;
 
 	/* copy back valid data */
 	for (flashpg = 0; flashpg < cur_flashpgs_per_blk; flashpg++) {
@@ -1416,7 +1424,7 @@ static bool conv_write(struct nvmev_ns *ns, struct nvmev_request *req, struct nv
 			set_rmap_ent(conv_ftl, INVALID_LPN, &ppa);
 			NVMEV_DEBUG("%s: %lld is invalid, ", __func__, ppa2pgidx(conv_ftl, &ppa));
 			/* update mtime */
-			struct line *updated_line = &((conv_ftl->lm).lines[ppa.g.blk]);
+			struct line *updated_line = get_line(conv_ftl, &ppa);
 			updated_line->mtime = ktime_get_ns();
 		}
 

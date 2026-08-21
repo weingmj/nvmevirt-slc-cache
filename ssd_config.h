@@ -24,8 +24,8 @@
 #define CELL_MODE_QLC 4
 
 /* SLC Cache Mode */
-//#define ENABLE_SLC_CACHE  1
-#define ENABLE_SLC_CACHE  0
+#define ENABLE_SLC_CACHE  1
+//#define ENABLE_SLC_CACHE  0
 
 /* Must select one of INTEL_OPTANE, SAMSUNG_970PRO, or ZNS_PROTOTYPE
  * in Makefile */
