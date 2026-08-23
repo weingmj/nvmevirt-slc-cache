@@ -63,24 +63,3 @@ SLC 캐시 자체는 `ssd_config.h`의 `ENABLE_SLC_CACHE`로 켜고 끈다.
 |---|---|
 | `download.sh` | 저장소를 새로 clone (`chlab`에서 실행) |
 | `upload.sh` | `git add`/`commit`/`push`. 메시지를 안 주면 현재 시각으로 자동 생성 |
-
-## Contributing
-When contributing to this repository, please first discuss the change you wish to make via [issues](https://github.com/snu-csl/nvmevirt/issues) or email(nvmevirt@gmail.com) before making a change.
-
-### Pull Requests
-1. Create a personal fork of the project on Github.
-2. Clone the fork on your local machine.
-3. Implement/fix your feature, comment your code.
-4. Follow the code style of this project, including indentation.
-5. Run tests using [nvmev-evaluation](https://github.com/snu-csl/nvmev-evaluation).
-6. From your fork open a pull request in our `main` branch!
-7. Please wait for the maintainer's review.
-
-
-## License
-
-NVMeVirt is offered under the terms of the GNU General Public License version 2 as published by the Free Software Foundation. More information about this license can be found [here](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html).
-
-Priority queue implementation [`pqueue/`](pqueue/) is offered under the terms of the BSD 2-clause license (GPL-compatible). (Copyright (c) 2014, Volkan Yazıcı <volkan.yazici@gmail.com>. All rights reserved.)
-
-
