@@ -1,3 +1,45 @@
+# NVMeVirt SLC Cache
+
+Linux 커널 기반 NVMe SSD 에뮬레이터 [NVMeVirt](https://github.com/snu-csl/nvmevirt)의
+Conventional FTL에 SLC 캐시 계층과 GC victim 선정 정책을 추가한 구현.
+
+## 배경
+
+원본 NVMeVirt의 conv_ftl은 모든 블록을 TLC 모드로만 다룬다. 실제 SSD는 쓰기가
+들어오면 우선 SLC 모드로 받아 지연시간을 낮추고, SLC 영역이 차면 백그라운드에서
+TLC로 옮긴다. 이 동작이 없으면 Random Write 지연시간이 실제 장치와 크게 달라진다.
+
+## 구현한 것
+
+**SLC 캐시 계층** (`ssd_config.h`의 `ENABLE_SLC_CACHE`로 on/off)
+- 쓰기 요청을 SLC 모드 블록에 우선 할당
+- SLC 영역 소진 시 TLC 블록으로의 migration
+- SLC/TLC 모드별 프로그램 지연시간 분리 적용
+
+**GC victim 선정 정책** (빌드 타임 분기)
+- `make` — greedy (원본)
+- `make cb` — cost-benefit (`-DCB`)
+- `make rd` — random (`-DRD`)
+
+**검증 워크로드**
+*SLC 캐시* — SLC 영역을 채우고도 남을 만큼 write를 수행한 뒤, TLC migration
+경로에 디버그 출력을 삽입해 migration이 실제로 트리거되는지 확인했다.
+(`fio_write_seq.sh`)
+
+*GC victim 정책* — 정책 간 차이를 보려면 라인별 age와 valid page 분포가 벌어져
+있어야 한다. hot/cold 영역에 서로 다른 `rate_iops`를 부여하는 fio 워크로드를
+별도로 작성해, cost-benefit이 greedy보다 유리해지는 구간을 확인했다.
+(`fio_write_cb.sh`, `fio_write_server.sh`)
+
+## 빠른 시작
+
+```bash
+# grub에 memmap= 예약 필요 (아래 실행 환경 분기 참고)
+make
+./test_script/start.sh
+./test_script/fio_write_seq.sh
+```
+
 ## 테스트 스크립트 (`test_script/`)
 
 SLC 캐시 구현을 실제로 돌려보기 위한 스크립트 모음. 전부 저장소 루트에서
